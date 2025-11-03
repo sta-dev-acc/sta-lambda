@@ -1,0 +1,59 @@
+service: sta-lambda
+useDotenv: true
+
+provider:
+  name: aws
+  stage: development
+  region: us-east-1
+  runtime: nodejs18.x
+  memorySize: 1024
+  timeout: 300
+  environment:
+    NODE_ENV: ${self:provider.stage}
+    # Blockchain Configuration
+    INFURA_RPC_URL: ${env:INFURA_RPC_URL}
+    MASTER_WALLET_PRIVATE_KEY: ${env:MASTER_WALLET_PRIVATE_KEY}
+    SMART_TAGS_CONTRACT_ADDRESS: ${env:SMART_TAGS_CONTRACT_ADDRESS}
+    # Pinata Configuration
+    PINATA_API_KEY: ${env:PINATA_API_KEY}
+    PINATA_SECRET_API_KEY: ${env:PINATA_SECRET_API_KEY}
+    # Website Configuration
+    WEBSITE_URL: ${env:WEBSITE_URL}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: "*"
+
+plugins:
+  - serverless-esbuild
+
+functions:
+  propertyCreation:
+    name: sta-lambda-propertyCreation  # Fixed name for all environments
+    handler: src/functions/property-creation/handler.propertyCreationHandler
+    description: "Complete property creation workflow: Pinata upload + Blockchain registration + Email notification"
+    memorySize: 1536
+    timeout: 300
+    events:
+      - http:
+          path: property/create
+          method: post
+          cors: true
+    environment:
+      FUNCTION_NAME: propertyCreation
+
+custom:
+  esbuild:
+    bundle: true
+    minify: false
+    sourcemap: true
+    target: node18
+    platform: node
+    concurrency: 10
+    external:
+      - aws-sdk
