@@ -1,7 +1,7 @@
 {
   "name": "sta-lambda",
   "version": "1.0.0",
-  "description": "Smart Tags Analytics Lambda Functions for Blockchain, Pinata, and Email Services",
+  "description": "Smart Tags Analytics Lambda Functions for Blockchain and Pinata services",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
@@ -25,7 +25,6 @@
     "lambda",
     "blockchain",
     "pinata",
-    "email",
     "serverless"
   ],
   "author": "Smart Tags Analytics Team",

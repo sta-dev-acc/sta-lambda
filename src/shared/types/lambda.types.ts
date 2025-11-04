@@ -52,8 +52,6 @@ export interface LambdaEnvironment {
   AWS_ACCESS_KEY_ID: string;
   AWS_SECRET_ACCESS_KEY: string;
   AWS_REGION: string;
-  SES_FROM_EMAIL: string;
-  SES_REPLY_TO_EMAIL: string;
   AWS_S3_BUCKET_NAME: string;
   WEBSITE_URL: string;
 }
@@ -85,43 +83,4 @@ export interface MulterFile {
   destination: string;
   filename: string;
   path: string;
-}
-
-// Email Types
-export enum EmailType {
-  BLOCKCHAIN_TRANSACTION_COMPLETED = "blockchain_transaction_completed",
-  INVITATION = "invitation",
-  PASSWORD_RESET = "password_reset",
-  OTP = "otp",
-}
-
-export interface BaseEmailContext {
-  recipientEmail: string;
-  recipientName?: string;
-  propertyName?: string;
-  transactionHash?: string;
-  tokenId?: number;
-  userFullName?: string;
-}
-
-export interface BlockchainTransactionCompletedEmailContext
-  extends BaseEmailContext {
-  propertyName: string;
-  transactionHash: string;
-  tokenId: number;
-  userFullName: string;
-}
-
-export interface EmailOptions {
-  cc?: string[];
-  bcc?: string[];
-  replyTo?: string;
-  tags?: string[];
-  metadata?: Record<string, any>;
-}
-
-export interface EmailSendResult {
-  success: boolean;
-  messageId?: string;
-  error?: string;
 }

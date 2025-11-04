@@ -15,7 +15,6 @@ src/
 │   ├── services/              # Business logic services
 │   │   ├── blockchain.service.ts
 │   │   ├── pinata.service.ts
-│   │   └── email.service.ts
 │   └── types/
 │       └── lambda.types.ts    # TypeScript type definitions
 ├── contracts/
@@ -33,7 +32,7 @@ Handles the complete property creation workflow when files need to be registered
 ### Workflow
 1. **Uploads property files to Pinata/IPFS** → Returns metadata CID
 2. **Registers property on blockchain** with metadata CID → Returns token ID and transaction hash
-3. **Sends completion email** to user with blockchain details
+3. Returns blockchain details to caller in sta-api
 
 ### Input
 ```typescript
@@ -74,11 +73,7 @@ Handles the complete property creation workflow when files need to be registered
 - File validation and type checking
 - S3 URL processing
 
-### EmailService
-- Email template generation
-- SES integration
-- Multiple email types support
-- Error handling for email failures
+Note: Email notifications are handled by sta-api. This Lambda focuses solely on Pinata/IPFS and blockchain operations.
 
 ## Environment Variables
 
@@ -93,14 +88,6 @@ SMART_TAGS_CONTRACT_ADDRESS=0x...
 # Pinata/IPFS Configuration  
 PINATA_API_KEY=your_pinata_api_key
 PINATA_SECRET_API_KEY=your_pinata_secret_key
-
-# AWS SES Configuration
-AWS_ACCESS_KEY_ID=your_aws_access_key
-AWS_SECRET_ACCESS_KEY=your_aws_secret_key
-AWS_REGION=us-east-1
-
-# Email Configuration
-SES_FROM_EMAIL=noreply@yourdomain.com
 
 # Website Configuration
 WEBSITE_URL=https://app.smarttaganalytics.com
@@ -155,15 +142,13 @@ The handler uses service classes for better organization:
 3. Upload files to Pinata (if provided)
 4. Check wallet balance
 5. Register on blockchain
-6. Send email notification
-7. Return response
+6. Return response
 ```
 
 ### Service Pattern
 Each service handles a specific domain:
 - **BlockchainService** - Blockchain operations
-- **PinataService** - IPFS file operations  
-- **EmailService** - Email notifications
+- **PinataService** - IPFS file operations
 
 ## Usage from Main API (sta-api)
 
@@ -205,7 +190,7 @@ sta-api saves to database
     ↓
 sta-api invokes Lambda function
     ↓
-Lambda uploads files → registers on blockchain → sends email
+Lambda uploads files to pinata/IPFS → registers on blockchain
     ↓
 Lambda returns result to sta-api
     ↓
@@ -226,7 +211,6 @@ All Lambda execution logs are available in CloudWatch Logs.
 ## Security
 
 ### IAM Permissions
-- SES: SendEmail, SendRawEmail
 - CloudWatch Logs: CreateLogGroup, CreateLogStream, PutLogEvents
 
 ### Environment Variables

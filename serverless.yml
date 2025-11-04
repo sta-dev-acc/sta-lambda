@@ -36,7 +36,7 @@ functions:
   propertyCreation:
     name: sta-lambda-propertyCreation  # Fixed name for all environments
     handler: src/functions/property-creation/handler.propertyCreationHandler
-    description: "Complete property creation workflow: Pinata upload + Blockchain registration + Email notification"
+    description: "Property creation workflow: Pinata upload + Blockchain registration"
     memorySize: 1536
     timeout: 300
     events:
