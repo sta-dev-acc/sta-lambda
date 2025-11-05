@@ -9,6 +9,16 @@ dist/
 build/
 *.tsbuildinfo
 
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfvars
+terraform/terraform.tfplan
+terraform/terraform.tfplan.*
+lambda-deployment.zip
+
 # Compiled JavaScript files (TypeScript output)
 # Note: We keep only .ts files in src/, .js files are generated during build
 src/**/*.js

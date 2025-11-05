@@ -1,0 +1,20 @@
+# Copy this file to terraform.tfvars and fill in your values
+# DO NOT commit terraform.tfvars to version control
+
+environment = "development"
+region      = "us-east-1"
+
+# Blockchain Configuration
+infura_rpc_url              = "https://sepolia.infura.io/v3/8bc7a1e773d94370a474b51dc4866e64"
+master_wallet_private_key   = "af410a37113cc26509c54d0f790c63c5479244f3986354774a79997d0e635960"
+smart_tags_contract_address = "0xec8155c8D9B453f1c6BDe731E91468116185Cb1f"
+
+# Pinata Configuration
+pinata_api_key       = "8ec55b3b28390fde57dc"
+pinata_secret_api_key = "a5906007ccac9b8f654fc4ce115cf5a92d9f9f87104c8a334548a09b36bf6964"
+
+# Website Configuration
+website_url = "https://app.smarttaganalytics.com"
+
+
+
