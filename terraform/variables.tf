@@ -25,13 +25,13 @@ variable "runtime" {
 variable "memory_size" {
   description = "Lambda memory size in MB"
   type        = number
-  default     = 1536 # Often use for medium weight functions, Billing is based on memory allocation and execution time
+  default     = 512 # Often use for medium weight functions, Billing is based on memory allocation and execution time
 }
 
 variable "timeout" {
   description = "Lambda timeout in seconds"
   type        = number
-  default     = 300 # 5 minutes, default timeout is 3 seconds
+  default     = 60 # 5 minutes, default timeout is 3 seconds
 }
 
 variable "handler" {

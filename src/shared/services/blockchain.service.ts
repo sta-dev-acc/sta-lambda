@@ -55,12 +55,20 @@ export class BlockchainService {
 
   private loadSmartTagsABI(): ethers.InterfaceAbi {
     // Multiple path fallbacks to handle different environments
+    // Note: In Lambda runtime, process.cwd() = /var/task
     const candidatePaths = [
-      // For Lambda runtime and local development (single src structure)
+      // ✅ For Lambda runtime (staging/production - zip extracts dist/ contents to /var/task/)
+      join(process.cwd(), "contracts/abis/SmartTags.json"),  // First try: direct path in Lambda
+      // ✅ For local development (when running from project root with dist/ folder)
+      join(process.cwd(), "dist/contracts/abis/SmartTags.json"),  // Second try: local dist/ path
+      // For Lambda runtime (relative to handler.js location)
+      join(__dirname, "../contracts/abis/SmartTags.json"),
+      join(__dirname, "../../contracts/abis/SmartTags.json"),
+      // For local development (src structure)
       join(process.cwd(), "src/contracts/abis/SmartTags.json"),
       // Alternative paths
-      join(__dirname, "../../contracts/abis/SmartTags.json"),
       join(__dirname, "../../../contracts/abis/SmartTags.json"),
+      join(__dirname, "../dist/contracts/abis/SmartTags.json"),
     ];
 
     for (const abiPath of candidatePaths) {
