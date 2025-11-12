@@ -105,16 +105,16 @@ resource "aws_lambda_permission" "api_gateway" {
 }
 
 # API Gateway Method Response
-resource "aws_api_gateway_method_response" "property_create" {
-  rest_api_id = aws_api_gateway_rest_api.api.id
-  resource_id = aws_api_gateway_resource.property_create_create.id
-  http_method  = aws_api_gateway_method.property_create.http_method
-  status_code  = "200"
+# resource "aws_api_gateway_method_response" "property_create" {
+#   rest_api_id = aws_api_gateway_rest_api.api.id
+#   resource_id = aws_api_gateway_resource.property_create_create.id
+#   http_method  = aws_api_gateway_method.property_create.http_method
+#   status_code  = "200"
 
-  response_headers = var.enable_cors ? {
-    "Access-Control-Allow-Origin" = true
-  } : {}
-}
+#   response_headers = var.enable_cors ? {
+#     "Access-Control-Allow-Origin" = true
+#   } : {}
+# }
 
 # API Gateway Integration Response
 resource "aws_api_gateway_integration_response" "property_create" {
@@ -134,8 +134,8 @@ resource "aws_api_gateway_integration_response" "property_create" {
 resource "aws_api_gateway_deployment" "api" {
   depends_on = [
     aws_api_gateway_integration.property_create,
-    aws_api_gateway_method_response.property_create,
-    aws_api_gateway_integration_response.property_create
+    # aws_api_gateway_method_response.property_create,
+    # aws_api_gateway_integration_response.property_create
   ]
 
   rest_api_id = aws_api_gateway_rest_api.api.id

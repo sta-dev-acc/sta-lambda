@@ -211,4 +211,98 @@ export class BlockchainService {
       );
     }
   }
+
+  async updateProperty(tokenId: number, newCid: string): Promise<{ hash: string }> {
+    try {
+      console.log(`Updating property ${tokenId} with new CID: ${newCid}`);
+
+      // Check if property exists
+      try {
+        await this.contract.ownerOf(tokenId);
+      } catch {
+        throw new Error("Property not found");
+      }
+
+      // Check if new CID is already used
+      const isCIDUsed = await this.contract.isCIDUsed(newCid);
+      if (isCIDUsed) {
+        throw new Error("New CID is already used");
+      }
+
+      // Execute the transaction
+      const tx = await this.contract.updateProperty(tokenId, newCid);
+      console.log(`Transaction sent: ${tx.hash}`);
+
+      // Wait for transaction confirmation
+      const receipt = await tx.wait();
+
+      if (receipt.status !== 1) {
+        throw new Error("Transaction failed");
+      }
+
+      console.log(`Property ${tokenId} updated successfully`);
+
+      return {
+        hash: tx.hash,
+      };
+    } catch (error) {
+      console.error(`Failed to update property ${tokenId}:`, error);
+      throw new Error(
+        `Failed to update property on blockchain: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    }
+  }
+
+  async estimateUpdatePropertyCost(tokenId: number, cid: string): Promise<{
+    gasLimit: bigint;
+    gasPriceWei: bigint;
+    totalCostWei: bigint;
+    totalCostEth: string;
+  }> {
+    try {
+      const gasLimit = await this.contract.updateProperty.estimateGas(tokenId, cid);
+      const feeData = await this.provider.getFeeData();
+      const gasPriceWei = feeData.gasPrice ?? feeData.maxFeePerGas ?? 0n;
+      const totalCostWei = gasLimit * gasPriceWei;
+      const totalCostEth = ethers.formatEther(totalCostWei);
+
+      return { gasLimit, gasPriceWei, totalCostWei, totalCostEth };
+    } catch (error) {
+      console.error("Failed to estimate updateProperty gas:", error);
+      const ethersError = error as {
+        code?: string;
+        shortMessage?: string;
+        message?: string;
+      };
+
+      if (
+        ethersError.code === "CALL_EXCEPTION" &&
+        (ethersError.shortMessage?.includes("execution reverted") ||
+          ethersError.message?.includes("execution reverted"))
+      ) {
+        const walletAddress = this.wallet.address;
+        const balanceEth = await this.getWalletBalanceEth();
+        throw new Error(
+          `Insufficient balance in wallet ${walletAddress}. Current balance: ${balanceEth} ETH. Please add funds to complete the transaction.`
+        );
+      }
+
+      throw new Error("Failed to estimate transaction gas");
+    }
+  }
+
+  async ensureSufficientBalanceForUpdateProperty(tokenId: number, cid: string): Promise<void> {
+    const [balanceEth, estimate] = await Promise.all([
+      this.getWalletBalanceEth(),
+      this.estimateUpdatePropertyCost(tokenId, cid),
+    ]);
+
+    const balanceWei = ethers.parseEther(balanceEth);
+    if (balanceWei < estimate.totalCostWei) {
+      const walletAddress = this.wallet.address;
+      throw new Error(
+        `Insufficient balance in wallet ${walletAddress}. Current balance: ${balanceEth} ETH. Please add funds to complete the transaction.`
+      );
+    }
+  }
 }

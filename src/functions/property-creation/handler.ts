@@ -1,5 +1,3 @@
-// Import idempotent babel-polyfill first to allow multiple imports without errors
-import "idempotent-babel-polyfill";
 import {
   APIGatewayProxyEvent,
   APIGatewayProxyResult,
@@ -13,7 +11,7 @@ import {
 } from "../../shared/types/lambda.types";
 
 export const propertyCreationHandler = async (
-  event: APIGatewayProxyEvent,
+  event: APIGatewayProxyEvent | PropertyCreationEvent,
   context: Context
 ): Promise<APIGatewayProxyResult> => {
   const startTime = Date.now();
@@ -28,27 +26,85 @@ export const propertyCreationHandler = async (
   try {
     logger.info(`Handler started - RequestId: ${context.awsRequestId}`);
 
-    // Parse and validate request body
-    if (!event.body) {
-      throw new Error("Request body is required");
-    }
+    // Determine if this is an API Gateway invocation or direct Lambda invocation
+    // API Gateway events have httpMethod property, direct invocations don't
+    const eventAny = event as any;
+    const isApiGatewayInvocation =
+      typeof eventAny === "object" &&
+      eventAny !== null &&
+      "httpMethod" in eventAny &&
+      typeof eventAny.httpMethod === "string";
 
     let propertyData: PropertyCreationEvent;
-    try {
-      propertyData = JSON.parse(event.body);
-    } catch {
-      throw new Error("Invalid JSON in request body");
+
+    if (isApiGatewayInvocation) {
+      // Handle API Gateway invocation
+      const apiEvent = event as APIGatewayProxyEvent;
+
+      // Handle CORS preflight (OPTIONS) requests
+      if (apiEvent.httpMethod === "OPTIONS") {
+        return {
+          statusCode: 200,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers":
+              "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+            "Access-Control-Allow-Methods": "POST,OPTIONS",
+          },
+          body: "",
+        };
+      }
+
+      // Validate HTTP method
+      if (apiEvent.httpMethod !== "POST") {
+        return {
+          statusCode: 405,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+          body: JSON.stringify({
+            success: false,
+            error: `Method ${apiEvent.httpMethod} not allowed. Only POST is supported.`,
+          }),
+        };
+      }
+
+      // Parse and validate request body
+      if (!apiEvent.body || apiEvent.body.trim() === "") {
+        throw new Error("Request body is required");
+      }
+
+      try {
+        propertyData = JSON.parse(apiEvent.body);
+      } catch {
+        throw new Error("Invalid JSON in request body");
+      }
+    } else {
+      // Handle direct Lambda invocation - event is the request object directly
+      propertyData = event as PropertyCreationEvent;
     }
 
     // Validate required fields
     if (
+      !propertyData.action ||
       !propertyData.propertyId ||
       !propertyData.userEmail ||
       !propertyData.fileUrls
     ) {
       throw new Error(
-        "Missing required fields: propertyId, userEmail, and fileUrls"
+        "Missing required fields: action, propertyId, userEmail, and fileUrls"
       );
+    }
+
+    // Validate action
+    if (propertyData.action !== 'register' && propertyData.action !== 'update') {
+      throw new Error("action must be either 'register' or 'update'");
+    }
+
+    // Validate tokenId for update action
+    if (propertyData.action === 'update' && !propertyData.tokenId) {
+      throw new Error("tokenId is required for 'update' action");
     }
 
     // Validate fileUrls
@@ -66,11 +122,11 @@ export const propertyCreationHandler = async (
     }
 
     logger.info(
-      `Processing property creation for property ${propertyData.propertyId}`
+      `Processing property ${propertyData.action} for property ${propertyData.propertyId}`
     );
 
     let metadataCID: string;
-    let blockchainResult: { hash: string; tokenId: number };
+    let blockchainResult: { hash: string; tokenId?: number };
 
     // Initialize services
     const blockchainService = new BlockchainService();
@@ -99,24 +155,54 @@ export const propertyCreationHandler = async (
       // ============================================
       // STEP 2: Check wallet balance before blockchain transaction
       // ============================================
-      await blockchainService.ensureSufficientBalanceForRegisterLand(
-        metadataCID
-      );
+      if (propertyData.action === 'register') {
+        await blockchainService.ensureSufficientBalanceForRegisterLand(
+          metadataCID
+        );
+      } else {
+        await blockchainService.ensureSufficientBalanceForUpdateProperty(
+          propertyData.tokenId!,
+          metadataCID
+        );
+      }
 
       logger.info(`Balance check passed`);
 
       // ============================================
-      // STEP 3: Register on blockchain
+      // STEP 3: Register or Update on blockchain
       // ============================================
-      logger.info(
-        `Registering property on blockchain with CID: ${metadataCID}`
-      );
+      if (propertyData.action === 'register') {
+        logger.info(
+          `Registering property on blockchain with CID: ${metadataCID}`
+        );
 
-      blockchainResult = await blockchainService.registerLand(metadataCID);
+        const registerResult = await blockchainService.registerLand(metadataCID);
+        blockchainResult = {
+          hash: registerResult.hash,
+          tokenId: registerResult.tokenId,
+        };
 
-      logger.info(
-        `Blockchain registration completed. Token ID: ${blockchainResult.tokenId}, Hash: ${blockchainResult.hash}`
-      );
+        logger.info(
+          `Blockchain registration completed. Token ID: ${blockchainResult.tokenId}, Hash: ${blockchainResult.hash}`
+        );
+      } else {
+        logger.info(
+          `Updating property ${propertyData.tokenId} on blockchain with CID: ${metadataCID}`
+        );
+
+        const updateResult = await blockchainService.updateProperty(
+          propertyData.tokenId!,
+          metadataCID
+        );
+        blockchainResult = {
+          hash: updateResult.hash,
+          tokenId: propertyData.tokenId,
+        };
+
+        logger.info(
+          `Blockchain update completed. Token ID: ${blockchainResult.tokenId}, Hash: ${blockchainResult.hash}`
+        );
+      }
     }
 
     const result: PropertyCreationResult = {
@@ -124,7 +210,9 @@ export const propertyCreationHandler = async (
       tokenId: blockchainResult.tokenId,
       transactionHash: blockchainResult.hash,
       metadataCID,
-      message: "Property created and registered on blockchain successfully",
+      message: propertyData.action === 'register'
+        ? "Property created and registered on blockchain successfully"
+        : "Property updated on blockchain successfully",
     };
 
     const duration = Date.now() - startTime;

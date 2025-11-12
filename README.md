@@ -24,27 +24,35 @@ src/
     └── lambda.types.ts        # Legacy types (for compatibility)
 ```
 
-## Function: Property Creation
+## Function: Property Creation & Update
 
 ### Purpose
-Handles the complete property creation workflow when files need to be registered on the blockchain.
+Handles both property registration and update workflows when files need to be registered or updated on the blockchain.
+
+### Supported Actions
+- **`register`**: Register a new property on the blockchain (first time)
+- **`update`**: Update an existing property's metadata on the blockchain
 
 ### Workflow
 1. **Uploads property files to Pinata/IPFS** → Returns metadata CID
-2. **Registers property on blockchain** with metadata CID → Returns token ID and transaction hash
+2. **Registers or Updates property on blockchain** with metadata CID → Returns token ID and transaction hash
 3. Returns blockchain details to caller in sta-api
 
 ### Input
 ```typescript
 {
-  propertyId: string;        // Required - unique property identifier
-  propertyName: string;     // Required - property name
-  fileUrls: string[];       // Required - array of S3 URLs to upload
-  userId: number;            // Required - user ID
-  userEmail: string;        // Required - recipient email
-  userFullName: string;      // Required - user full name
+  action: 'register' | 'update';  // Required - action to perform
+  propertyId: string;              // Required - unique property identifier
+  propertyName: string;            // Required - property name
+  fileUrls: string[];              // Required - array of S3 URLs to upload
+  userId: number;                  // Required - user ID
+  userEmail: string;               // Required - recipient email
+  userFullName: string;            // Required - user full name
+  tokenId?: number;                // Required for 'update' action - existing token ID
 }
 ```
+
+**Note**: For `update` action, `tokenId` is required. For `register` action, `tokenId` is not needed.
 
 ### Output
 ```typescript
@@ -62,9 +70,10 @@ Handles the complete property creation workflow when files need to be registered
 
 ### BlockchainService
 - Handles all blockchain operations
-- Wallet balance checking
-- Gas estimation
-- Property registration
+- Wallet balance checking (for both register and update)
+- Gas estimation (for both register and update)
+- Property registration (`registerLand`)
+- Property updates (`updateProperty`)
 - Transaction confirmation
 
 ### PinataService

@@ -1,11 +1,13 @@
 // Lambda Event Types
 export interface PropertyCreationEvent {
+  action: 'register' | 'update';
   propertyId: string;
   propertyName: string;
   fileUrls: string[]; // Required - files must exist for blockchain registration
   userId: number;
   userEmail: string;
   userFullName: string;
+  tokenId?: number;
 }
 
 // Lambda Response Types
